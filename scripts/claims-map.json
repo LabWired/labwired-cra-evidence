@@ -1,76 +1,91 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "claims": [
     {
-      "id": "root_of_trust_otp",
-      "title": "Hardware root of trust in OTP flash",
-      "cra_annex_i_ref": "Annex I — secure by design (root of trust)",
+      "id": "otp_root_key_provisioned",
+      "title": "OTP root key provisioned (UICR CUSTOMER + counter)",
+      "theme": "root-of-trust / one-time flash",
+      "notes": "Sim UICR with 1→0 write semantics; not a silicon TRNG claim.",
       "evidence": [
         { "kind": "uart_contains", "value": "ROT: PROVISIONED" },
-        { "kind": "uart_contains", "value": "SECURE BOOT OK (v1)" }
+        { "kind": "memory_value", "address": "0x20000058", "expected_value": "0x3FB3CA22", "size": 4 },
+        { "kind": "memory_value", "address": "0x20000028", "expected_value": "0xFFFFFFFC", "size": 4 }
       ]
     },
     {
-      "id": "authenticated_boot",
-      "title": "Authenticated boot (hardware AES challenge)",
-      "cra_annex_i_ref": "Annex I — protection of integrity of the product",
+      "id": "aes_boot_challenge",
+      "title": "Hardware AES-128-ECB boot challenge vs golden ciphertext",
+      "theme": "boot integrity check (demo)",
+      "notes": "Not a full measured-boot / chain-of-trust model — fixed challenge string + ECB coprocessor golden.",
       "evidence": [
         { "kind": "uart_contains", "value": "SECURE BOOT OK (v1)" },
-        { "kind": "uart_contains", "value": "SECURE BOOT OK (v2)" }
+        { "kind": "uart_contains", "value": "SECURE BOOT OK (v2)" },
+        { "kind": "memory_value", "address": "0x20000048", "expected_value": "0x62BBEEF9", "size": 4 },
+        { "kind": "memory_value", "address": "0x2000004c", "expected_value": "0xB81E39D1", "size": 4 }
       ]
     },
     {
-      "id": "authenticated_update",
-      "title": "Integrity-protected software update (ECDSA via SE)",
-      "cra_annex_i_ref": "Annex I — secure updates",
+      "id": "ecdsa_ota_verify",
+      "title": "ECDSA P-256 OTA accept + forged signature reject (SE)",
+      "theme": "integrity-protected update",
+      "notes": "Real p256 math in SE model; command set is ATECC-shaped, not full datasheet.",
       "evidence": [
         { "kind": "uart_contains", "value": "OTA v2 SIGNATURE OK" },
-        { "kind": "uart_contains", "value": "BAD SIGNATURE REJECTED" }
+        { "kind": "uart_contains", "value": "BAD SIGNATURE REJECTED" },
+        { "kind": "memory_value", "address": "0x20000040", "expected_value": 1, "size": 4 },
+        { "kind": "memory_value", "address": "0x2000002c", "expected_value": 1, "size": 4 }
       ]
     },
     {
-      "id": "rollback_protection",
-      "title": "Anti-rollback of authentic older images",
-      "cra_annex_i_ref": "Annex I / UNECE R156 — rollback protection",
+      "id": "anti_rollback",
+      "title": "Monotonic OTP counter rejects authentic older image",
+      "theme": "rollback protection",
       "evidence": [
         { "kind": "uart_contains", "value": "ANTI-ROLLBACK v2 ACTIVE" },
-        { "kind": "uart_contains", "value": "ROLLBACK REJECTED" }
+        { "kind": "uart_contains", "value": "ROLLBACK REJECTED" },
+        { "kind": "memory_value", "address": "0x20000028", "expected_value": "0xFFFFFFFC", "size": 4 },
+        { "kind": "memory_value", "address": "0x20000038", "expected_value": 1, "size": 4 }
       ]
     },
     {
-      "id": "key_isolation_se",
-      "title": "Key isolation in secure element + attestation",
-      "cra_annex_i_ref": "Annex I — protection of confidentiality of cryptographic keys",
+      "id": "se_attestation",
+      "title": "SE sign/verify attestation round-trip",
+      "theme": "device key isolation (model)",
+      "notes": "Device private scalar is fixed in the SE model and never exposed via a read command.",
       "evidence": [
         { "kind": "uart_contains", "value": "ATTESTATION OK" },
-        { "kind": "uart_contains", "value": "OTA v2 SIGNATURE OK" }
+        { "kind": "memory_value", "address": "0x20000044", "expected_value": 1, "size": 4 }
       ]
     },
     {
-      "id": "nv_commit",
-      "title": "Update committed to non-volatile storage",
-      "cra_annex_i_ref": "Annex I — secure updates (commit)",
+      "id": "nv_update_commit",
+      "title": "Update payload programmed and hash-verified after reboot",
+      "theme": "non-volatile commit",
       "evidence": [
         { "kind": "uart_contains", "value": "OTA v2 COMMITTED" },
-        { "kind": "uart_contains", "value": "UPDATE SLOT VERIFIED" }
+        { "kind": "uart_contains", "value": "UPDATE SLOT VERIFIED" },
+        { "kind": "memory_value", "address": "0x20000000", "expected_value": 1, "size": 4 }
       ]
     },
     {
-      "id": "debug_lockout_recorded",
-      "title": "Debug lockout bit recorded (APPROTECT)",
-      "cra_annex_i_ref": "Annex I — protection against unauthorised access",
-      "notes": "APPROTECT is stored in the model; debug-port lockout side effects are not enforced in sim.",
+      "id": "approtect_value_written",
+      "title": "APPROTECT value written (stored, not enforced)",
+      "theme": "debug lockout bit recorded",
+      "notes": "Sim records APPROTECT; debug-port lockout side effects are not modelled.",
       "evidence": [
-        { "kind": "uart_contains", "value": "ROT: PROVISIONED" }
+        { "kind": "memory_value", "address": "0x20000024", "expected_value": 0, "size": 4 }
       ]
     },
     {
-      "id": "ci_reproducible_manifest",
-      "title": "Signable run manifest present",
-      "cra_annex_i_ref": "Evidence process — reproducible CI artifact",
+      "id": "run_manifest_present",
+      "title": "Reproducible run-manifest.json with digest",
+      "theme": "CI receipt",
+      "notes": "Digest is SHA-256 over canonical manifest fields. Pack also carries an OpenSSL detached signature over the digest file (ephemeral pack-signing key; public key in pack).",
       "evidence": [
         { "kind": "file_present", "path": "run-manifest.json" },
-        { "kind": "manifest_digest_nonempty" }
+        { "kind": "manifest_digest_nonempty" },
+        { "kind": "file_present", "path": "run-manifest.digest.sig" },
+        { "kind": "file_present", "path": "pack-signing-pubkey.pem" }
       ]
     }
   ]

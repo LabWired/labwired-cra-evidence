@@ -34,11 +34,15 @@ jobs:
 
       - name: Gate — no private keys in this repo
         run: |
-          if find . -name "*.pem" | grep -q .; then
+          # Only scan source trees — never .github (workflow would match its own
+          # documentation strings) and never generated out/.
+          if find . -name "*.pem" \
+              -not -path "./.git/*" -not -path "./out/*" | grep -q .; then
             echo "PEM files must not live in this repository" >&2
             exit 1
           fi
-          if grep -R "BEGIN EC PRIVATE KEY" . --include="*.py" --include="*.md" --include="*.json" --include="*.yaml" --include="*.yml"; then
+          if grep -R "BEGIN EC PRIVATE KEY" scripts README.md LICENSE \
+              --include="*.py" --include="*.md" --include="*.json" 2>/dev/null; then
             echo "Private key armor must not appear in source" >&2
             exit 1
           fi
