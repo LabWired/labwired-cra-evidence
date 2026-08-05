@@ -1,0 +1,65 @@
+name: CRA evidence pack
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly regenerate so the artifact does not go stale in silence
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: thumbv7em-none-eabi
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: cra-evidence
+          workspaces: |
+            . -> target
+            # core is cloned at runtime; cache still helps toolchain crates
+
+      - name: Gate — no private keys in this repo
+        run: |
+          if find . -name "*.pem" | grep -q .; then
+            echo "PEM files must not live in this repository" >&2
+            exit 1
+          fi
+          if grep -R "BEGIN EC PRIVATE KEY" . --include="*.py" --include="*.md" --include="*.json" --include="*.yaml" --include="*.yml"; then
+            echo "Private key armor must not appear in source" >&2
+            exit 1
+          fi
+
+      - name: Run evidence pack
+        run: ./scripts/run_evidence.sh
+        env:
+          OUT_DIR: ${{ github.workspace }}/out/nrf52840-secure-boot-evidence
+          PACK_DIR: ${{ github.workspace }}/out/nrf52840-secure-boot-evidence/cra-evidence-pack
+
+      - name: Upload cra-evidence-pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cra-evidence-pack
+          path: out/nrf52840-secure-boot-evidence/cra-evidence-pack/
+          if-no-files-found: warn
+
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f out/nrf52840-secure-boot-evidence/cra-evidence-pack/claims.md ]; then
+            cat out/nrf52840-secure-boot-evidence/cra-evidence-pack/claims.md >> "$GITHUB_STEP_SUMMARY"
+          fi
