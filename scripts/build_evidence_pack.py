@@ -32,7 +32,7 @@ running on the [LabWired](https://github.com/w1ne/labwired-core) simulator.
 - Not silicon / HIL — see `limitations.md`.
 - Claim titles are **technical** (what was asserted), not legal findings.
 
-Regenerate: https://github.com/w1ne/labwired-cra-evidence
+Regenerate: https://github.com/LabWired/labwired-cra-evidence
 """
 
 LIMITATIONS = """# Honest limitations

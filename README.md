@@ -1,6 +1,6 @@
 # LabWired secure-boot / OTA evidence pack (CI)
 
-[![Evidence](https://github.com/w1ne/labwired-cra-evidence/actions/workflows/evidence.yml/badge.svg)](https://github.com/w1ne/labwired-cra-evidence/actions/workflows/evidence.yml)
+[![Evidence](https://github.com/LabWired/labwired-cra-evidence/actions/workflows/evidence.yml/badge.svg)](https://github.com/LabWired/labwired-cra-evidence/actions/workflows/evidence.yml)
 
 **CI regenerates a downloadable evidence pack** for a virtual nRF52840 + ATECC608A
 secure-boot / signed-OTA / anti-rollback lifecycle on the open
