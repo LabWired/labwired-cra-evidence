@@ -117,7 +117,8 @@ python3 "$SCRIPTS/build_evidence_pack.py" \
 PACK_RC=$?
 set -e
 
-if find "$PACK_DIR" -name "*.pem" 2>/dev/null | grep -q .; then
+# Allow *public* PEMs (pack-signing-pubkey.pem); fail only on private-key armor.
+if grep -RE "BEGIN (EC )?PRIVATE KEY" "$PACK_DIR" 2>/dev/null; then
   echo "error: private key leaked into evidence pack" >&2
   exit 3
 fi
